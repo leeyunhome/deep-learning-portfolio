@@ -110,6 +110,43 @@
   }
   footer a { color: var(--accent); }
   code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
+  h3 { font-size: 1.02rem; margin: 1.9rem 0 0; }
+  h3:first-of-type { margin-top: 1.5rem; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    margin: 0.7rem 0 0;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  table { border-collapse: collapse; width: 100%; margin-top: 0.9rem; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; }
+  details {
+    margin-top: 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  details > summary {
+    cursor: pointer;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    list-style: none;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: " ▾"; }
+  details[open] > summary::after { content: " ▴"; }
+  details > div { padding: 0 0.9rem 0.9rem; }
+  details pre { margin-top: 0; }
+  .src-note { margin-top: 1.5rem; font-size: 0.88rem; color: var(--text-muted); }
+  .src-note a { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -166,6 +203,68 @@
         <span class="badge">SGD / Adam</span>
       </div>
 
+      <h3>모델과 학습 루프</h3>
+      <p>
+        <code>nn.Linear(1, 1)</code>이 <code>w</code>, <code>b</code>를 <code>nn.Parameter</code>로 들고 있고
+        <code>requires_grad=True</code> 상태이므로, <code>backward()</code> 한 번으로 두 파라미터의 기울기가 채워집니다.
+        수렴 과정을 눈으로 보려고 초기값을 정답에서 멀리 떨어진 <code>w=5, b=5</code>로 잡았습니다.
+      </p>
+      <pre><code>class LinearFit(nn.Module):
+    def __init__(self, w0=5.0, b0=5.0):
+        super().__init__()
+        self.line = nn.Linear(in_features=1, out_features=1)
+        with torch.no_grad():          # 초기값을 정답에서 멀리 떨어뜨려 둔다
+            self.line.weight.fill_(w0)
+            self.line.bias.fill_(b0)
+
+    def forward(self, x):
+        return self.line(x)
+
+
+def train(model, optimizer, epochs=80):
+    criterion = nn.MSELoss()
+    history = []
+    for epoch in range(epochs):
+        for xb, yb in loader:
+            pred = model(xb)
+            loss = criterion(pred, yb)
+
+            optimizer.zero_grad()      # 기울기는 누적되므로 매 스텝 초기화
+            loss.backward()
+            optimizer.step()
+
+            history.append(loss.item())
+
+        if epoch == 0:
+            # 첫 스텝의 계산 그래프를 저장해 backward가 어떤 경로로
+            # 기울기를 전파하는지 확인한다.
+            graph = torchviz.make_dot(loss, params=dict(model.named_parameters()))
+            graph.save("../docs/assets/autograd_graph.gv")
+
+    return history</code></pre>
+
+      <h3>SGD vs Adam 비교 <span style="font-weight:400;color:var(--text-muted);font-size:0.9rem;">— 강의에 없던, 직접 추가한 실험</span></h3>
+      <pre><code>model_sgd = LinearFit()
+history_sgd = train(model_sgd, optim.SGD(model_sgd.parameters(), lr=0.05))
+
+model_adam = LinearFit()
+history_adam = train(model_adam, optim.Adam(model_adam.parameters(), lr=0.1))</code></pre>
+
+      <table>
+        <thead>
+          <tr><th>옵티마이저</th><th>lr</th><th>최종 loss</th><th>w <span style="font-weight:400">(목표 2.5)</span></th><th>b <span style="font-weight:400">(목표 −1.0)</span></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>SGD</td><td class="num">0.05</td><td class="num">0.3759</td><td class="num">2.444</td><td class="num">−1.037</td></tr>
+          <tr><td>Adam</td><td class="num">0.1</td><td class="num">0.6213</td><td class="num">2.481</td><td class="num">−0.573</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.8rem;font-size:0.92rem;color:var(--text-muted);">
+        80 epoch·위 학습률 조건에서는 <strong>SGD 쪽 최종 loss가 더 낮았고</strong>, Adam은 기울기 <code>w</code>는
+        비슷하게 맞췄지만 절편 <code>b</code>가 목표에서 더 멀리 남았습니다.
+        옵티마이저의 우열이라기보다 <em>학습률·에폭 수에 따라 결과가 뒤집힐 수 있다</em>는 점을 보여주는 조건부 결과로 읽었습니다.
+      </p>
+
       <figure>
         <img src="assets/training_result.png" alt="SGD vs Adam 손실 곡선과 피팅 결과" />
         <figcaption>왼쪽: SGD와 Adam의 손실 감소 속도 비교 / 오른쪽: 학습된 직선과 데이터</figcaption>
@@ -176,12 +275,35 @@
         <figcaption>torchviz로 시각화한 backward 계산 그래프</figcaption>
       </figure>
 
-      <p>
-        전체 코드:
-        <a href="https://nbviewer.org/github/leeyunhome/deep-learning-portfolio/blob/main/notebooks/01_linear_regression_pytorch.ipynb" target="_blank" rel="noopener">
-          01_linear_regression_pytorch.ipynb
-        </a>
-        (<a href="https://github.com/leeyunhome/deep-learning-portfolio/blob/main/notebooks/01_linear_regression_pytorch.ipynb" target="_blank" rel="noopener">GitHub에서 보기</a>)
+      <h3>배운 점</h3>
+      <ul>
+        <li><code>loss.backward()</code>는 순전파에서 만들어진 계산 그래프를 거꾸로 타고 올라가며
+          <code>w</code>, <code>b</code> 각각에 대한 기울기를 누적한다 — torchviz로 그 경로를 직접 확인했다.</li>
+        <li>기울기가 <em>누적</em>되기 때문에 매 스텝 <code>zero_grad()</code>가 필요하다.</li>
+        <li>같은 문제에서도 옵티마이저와 학습률 조합에 따라 수렴 양상이 달라진다.</li>
+      </ul>
+
+      <details>
+        <summary>데이터 생성 코드 (재현용)</summary>
+        <div>
+          <pre><code>true_w, true_b = 2.5, -1.0
+n_points = 40
+
+xs = np.linspace(-3, 3, n_points).astype(np.float32)
+noise = np.random.normal(scale=0.6, size=n_points).astype(np.float32)
+ys = true_w * xs + true_b + noise
+
+x_tensor = torch.from_numpy(xs).unsqueeze(1)
+y_tensor = torch.from_numpy(ys).unsqueeze(1)
+
+dataset = PointsDataset(x_tensor, y_tensor)
+loader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)</code></pre>
+        </div>
+      </details>
+
+      <p class="src-note">
+        실행 가능한 전체 노트북(출력 포함):
+        <a href="https://github.com/leeyunhome/deep-learning-portfolio/blob/main/notebooks/01_linear_regression_pytorch.ipynb" target="_blank" rel="noopener">01_linear_regression_pytorch.ipynb</a>
       </p>
     </div>
   </section>
