@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deep Learning Portfolio</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1f2328;
+    --text-muted: #57606a;
+    --border: #e2e2df;
+    --accent: #3d5a80;
+    --accent-2: #e07a5f;
+    --code-bg: #f3f2ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --surface: #1c1f24;
+      --text: #e8e9eb;
+      --text-muted: #a0a6ad;
+      --border: #2c2f35;
+      --accent: #8ab4d8;
+      --accent-2: #f0a58a;
+      --code-bg: #23262b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  h1 { font-size: 2rem; margin: 0 0 0.5rem; }
+  .subtitle { color: var(--text-muted); font-size: 1.05rem; }
+  .credit {
+    margin-top: 1.25rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    font-size: 0.92rem;
+    color: var(--text-muted);
+  }
+  .credit a { color: var(--accent); }
+  section { margin: 2.5rem 0; }
+  h2 {
+    font-size: 1.3rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+  }
+  ul { padding-left: 1.3rem; }
+  li { margin: 0.35rem 0; }
+  figure { margin: 1rem 0; }
+  figure img {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: block;
+  }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+  .badge-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+  .badge {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .entry-list { display: flex; flex-direction: column; gap: 1rem; }
+  .entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .entry.upcoming { opacity: 0.55; }
+  .entry a { color: var(--text); font-weight: 600; text-decoration: none; }
+  .entry a:hover { color: var(--accent); }
+  .entry .desc { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.15rem; }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); }
+  code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Deep Learning Portfolio</h1>
+    <p class="subtitle">딥러닝 기초 개념을 하나씩 직접 구현하며 정리하는 개인 학습 포트폴리오입니다.</p>
+    <div class="credit">
+      본 포트폴리오는 <a href="https://www.honglab.ai/" target="_blank" rel="noopener">HongLab AI</a>
+      홍정모 님의 <a href="https://www.honglab.ai/courses/aipt1" target="_blank" rel="noopener">파트1. 딥러닝 첫걸음</a>
+      강의를 학습하며 이해한 개념을 바탕으로, 코드를 그대로 사용하지 않고
+      직접 재구성하여 실습한 결과물입니다.
+    </div>
+  </header>
+
+  <section>
+    <h2>01. PyTorch 선형회귀 &amp; Autograd</h2>
+    <div class="card">
+      <p>
+        <code>nn.Module</code>로 만든 1차 함수 모델이 경사하강법으로 실제 정답
+        (<code>w=2.5, b=-1.0</code>)에 수렴하는 과정을 확인하고,
+        <code>loss.backward()</code>가 만드는 계산 그래프를 <code>torchviz</code>로 시각화했습니다.
+        강의에는 없던 SGD vs Adam 수렴 속도 비교 실험을 추가했습니다.
+      </p>
+      <div class="badge-row">
+        <span class="badge">PyTorch</span>
+        <span class="badge">nn.Module</span>
+        <span class="badge">Autograd</span>
+        <span class="badge">SGD / Adam</span>
+      </div>
+
+      <figure>
+        <img src="assets/training_result.png" alt="SGD vs Adam 손실 곡선과 피팅 결과" />
+        <figcaption>왼쪽: SGD와 Adam의 손실 감소 속도 비교 / 오른쪽: 학습된 직선과 데이터</figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/autograd_graph.png" alt="Autograd 계산 그래프" />
+        <figcaption>torchviz로 시각화한 backward 계산 그래프</figcaption>
+      </figure>
+
+      <p>
+        전체 코드:
+        <a href="https://github.com/leeyunhome/deep-learning-portfolio/blob/main/notebooks/01_linear_regression_pytorch.ipynb" target="_blank" rel="noopener">
+          01_linear_regression_pytorch.ipynb
+        </a>
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>다음에 추가될 내용</h2>
+    <div class="entry-list">
+      <div class="entry upcoming">
+        <div>
+          <span>02. 신경망으로 확장 (Multi-layer)</span>
+          <div class="desc">단순 선형 모델을 여러 층의 신경망으로 확장</div>
+        </div>
+      </div>
+      <div class="entry upcoming">
+        <div>
+          <span>03. 분류(Classification) 문제</span>
+          <div class="desc">Train/Val/Test 분리와 분류 성능 지표</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    이 저장소는 학습 내용을 재구성한 개인 포트폴리오이며, 강의 원본 코드를 포함하지 않습니다. ·
+    강의 저작권은 <a href="https://www.honglab.ai/" target="_blank" rel="noopener">HongLab, Inc.</a>에 있습니다.
+  </footer>
+
+</div>
+</body>
+</html>
