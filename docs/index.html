@@ -191,9 +191,10 @@
     <h2>01. PyTorch 선형회귀 &amp; Autograd</h2>
     <div class="card">
       <p>
-        <code>nn.Module</code>로 만든 1차 함수 모델이 경사하강법으로 실제 정답
-        (<code>w=2.5, b=-1.0</code>)에 수렴하는 과정을 확인하고,
-        <code>loss.backward()</code>가 만드는 계산 그래프를 <code>torchviz</code>로 시각화했습니다.
+        scikit-learn에 내장된 <strong>당뇨병 환자 442명의 실제 임상 데이터</strong>에서
+        BMI(체질량지수) 하나로 1년 뒤 질병 진행도를 예측하는 선형 모델을
+        <code>nn.Module</code>과 경사하강법으로 직접 학습시켰습니다.
+        <code>loss.backward()</code>가 만드는 계산 그래프를 <code>torchviz</code>로 시각화했고,
         강의에는 없던 SGD vs Adam 수렴 속도 비교 실험을 추가했습니다.
       </p>
       <div class="badge-row">
@@ -201,19 +202,34 @@
         <span class="badge">nn.Module</span>
         <span class="badge">Autograd</span>
         <span class="badge">SGD / Adam</span>
+        <span class="badge">real dataset (n=442)</span>
       </div>
+
+      <h3>데이터: 강의 예제 대신 실제 임상 데이터</h3>
+      <p>
+        강의는 이해를 돕기 위해 임의로 만든 5개의 숫자 쌍을 사용하지만, 여기서는
+        scikit-learn이 제공하는 <strong>442명의 당뇨병 환자 임상 기록</strong>
+        (Efron et al., 2004)에서 BMI 한 컬럼만 입력으로 골라 사용했습니다.
+        노이즈가 많고 완벽한 직선으로 설명되지 않는, 있는 그대로의 실제 데이터입니다.
+      </p>
+      <pre><code>from sklearn.datasets import load_diabetes
+
+diabetes = load_diabetes()
+bmi_index = diabetes.feature_names.index("bmi")
+
+bmi = diabetes.data[:, bmi_index].astype(np.float32)          # 입력: BMI (표준화됨)
+progression = diabetes.target.astype(np.float32)              # 목표: 1년 뒤 질병 진행도</code></pre>
 
       <h3>모델과 학습 루프</h3>
       <p>
         <code>nn.Linear(1, 1)</code>이 <code>w</code>, <code>b</code>를 <code>nn.Parameter</code>로 들고 있고
         <code>requires_grad=True</code> 상태이므로, <code>backward()</code> 한 번으로 두 파라미터의 기울기가 채워집니다.
-        수렴 과정을 눈으로 보려고 초기값을 정답에서 멀리 떨어진 <code>w=5, b=5</code>로 잡았습니다.
       </p>
-      <pre><code>class LinearFit(nn.Module):
-    def __init__(self, w0=5.0, b0=5.0):
+      <pre><code>class BmiToProgression(nn.Module):
+    def __init__(self, w0=0.0, b0=0.0):
         super().__init__()
         self.line = nn.Linear(in_features=1, out_features=1)
-        with torch.no_grad():          # 초기값을 정답에서 멀리 떨어뜨려 둔다
+        with torch.no_grad():
             self.line.weight.fill_(w0)
             self.line.bias.fill_(b0)
 
@@ -221,7 +237,7 @@
         return self.line(x)
 
 
-def train(model, optimizer, epochs=80):
+def train(model, optimizer, epochs=2000):
     criterion = nn.MSELoss()
     history = []
     for epoch in range(epochs):
@@ -244,30 +260,31 @@ def train(model, optimizer, epochs=80):
     return history</code></pre>
 
       <h3>SGD vs Adam 비교 <span style="font-weight:400;color:var(--text-muted);font-size:0.9rem;">— 강의에 없던, 직접 추가한 실험</span></h3>
-      <pre><code>model_sgd = LinearFit()
-history_sgd = train(model_sgd, optim.SGD(model_sgd.parameters(), lr=0.05))
+      <pre><code>model_sgd = BmiToProgression()
+history_sgd = train(model_sgd, optim.SGD(model_sgd.parameters(), lr=0.8))
 
-model_adam = LinearFit()
-history_adam = train(model_adam, optim.Adam(model_adam.parameters(), lr=0.1))</code></pre>
+model_adam = BmiToProgression()
+history_adam = train(model_adam, optim.Adam(model_adam.parameters(), lr=2.0))</code></pre>
 
       <table>
         <thead>
-          <tr><th>옵티마이저</th><th>lr</th><th>최종 loss</th><th>w <span style="font-weight:400">(목표 2.5)</span></th><th>b <span style="font-weight:400">(목표 −1.0)</span></th></tr>
+          <tr><th>방법</th><th>lr</th><th>최종 loss (MSE)</th><th>w</th><th>b</th></tr>
         </thead>
         <tbody>
-          <tr><td>SGD</td><td class="num">0.05</td><td class="num">0.3759</td><td class="num">2.444</td><td class="num">−1.037</td></tr>
-          <tr><td>Adam</td><td class="num">0.1</td><td class="num">0.6213</td><td class="num">2.481</td><td class="num">−0.573</td></tr>
+          <tr><td>SGD (2000 epoch)</td><td class="num">0.8</td><td class="num">3890.46</td><td class="num">948.76</td><td class="num">152.13</td></tr>
+          <tr><td>Adam (2000 epoch)</td><td class="num">2.0</td><td class="num">3890.46</td><td class="num">949.43</td><td class="num">152.13</td></tr>
+          <tr><td>최소제곱법(OLS) 정확해</td><td class="num">—</td><td class="num">3890.46</td><td class="num">949.44</td><td class="num">152.13</td></tr>
         </tbody>
       </table>
       <p style="margin-top:0.8rem;font-size:0.92rem;color:var(--text-muted);">
-        80 epoch·위 학습률 조건에서는 <strong>SGD 쪽 최종 loss가 더 낮았고</strong>, Adam은 기울기 <code>w</code>는
-        비슷하게 맞췄지만 절편 <code>b</code>가 목표에서 더 멀리 남았습니다.
-        옵티마이저의 우열이라기보다 <em>학습률·에폭 수에 따라 결과가 뒤집힐 수 있다</em>는 점을 보여주는 조건부 결과로 읽었습니다.
+        충분한 epoch로 학습하니 SGD와 Adam 모두 <code>numpy.polyfit</code>으로 구한
+        <strong>최소제곱법 정확해와 거의 일치</strong>했습니다 — 경사하강법이 실제로
+        수학적 최적해에 수렴한다는 것을 실제 데이터로 확인한 부분입니다.
       </p>
 
       <figure>
-        <img src="assets/training_result.png" alt="SGD vs Adam 손실 곡선과 피팅 결과" />
-        <figcaption>왼쪽: SGD와 Adam의 손실 감소 속도 비교 / 오른쪽: 학습된 직선과 데이터</figcaption>
+        <img src="assets/training_result.png" alt="SGD vs Adam 손실 곡선과 BMI-진행도 피팅 결과" />
+        <figcaption>왼쪽: SGD와 Adam의 손실 감소 속도 비교 / 오른쪽: 442명 환자의 BMI와 질병 진행도, 학습된 직선</figcaption>
       </figure>
 
       <figure>
@@ -280,30 +297,40 @@ history_adam = train(model_adam, optim.Adam(model_adam.parameters(), lr=0.1))</c
         <li><code>loss.backward()</code>는 순전파에서 만들어진 계산 그래프를 거꾸로 타고 올라가며
           <code>w</code>, <code>b</code> 각각에 대한 기울기를 누적한다 — torchviz로 그 경로를 직접 확인했다.</li>
         <li>기울기가 <em>누적</em>되기 때문에 매 스텝 <code>zero_grad()</code>가 필요하다.</li>
-        <li>같은 문제에서도 옵티마이저와 학습률 조합에 따라 수렴 양상이 달라진다.</li>
+        <li><strong>학습률이 너무 크면 발산·진동한다는 것을 직접 재현했다.</strong>
+          처음 SGD 학습률을 <code>1.0</code>으로 뒀더니 <code>w</code>는 정확해에 수렴했지만
+          <code>b</code>는 0 근처에서 계속 진동했다. full-batch MSE에서 <code>b</code>에 대한 손실은
+          2차함수이고 <code>lr &lt; 2 / 곡률</code> 조건을 넘어서면서 매 스텝 부호가 뒤집히는
+          진동이 생긴 것이었다 — 학습률을 <code>0.8</code>로 낮추자 두 파라미터 모두 수렴했다.</li>
+        <li>충분히 학습된 경사하강법은 이 문제에서 최소제곱법과 같은 해로 수렴한다.</li>
       </ul>
 
       <details>
-        <summary>데이터 생성 코드 (재현용)</summary>
+        <summary>Dataset 클래스 (재현용)</summary>
         <div>
-          <pre><code>true_w, true_b = 2.5, -1.0
-n_points = 40
+          <pre><code>class PatientsDataset(Dataset):
+    """BMI(입력)와 질병 진행도(목표값) 쌍을 담는 Dataset."""
 
-xs = np.linspace(-3, 3, n_points).astype(np.float32)
-noise = np.random.normal(scale=0.6, size=n_points).astype(np.float32)
-ys = true_w * xs + true_b + noise
+    def __init__(self, features, targets):
+        self.features = torch.from_numpy(features).unsqueeze(1)
+        self.targets = torch.from_numpy(targets).unsqueeze(1)
 
-x_tensor = torch.from_numpy(xs).unsqueeze(1)
-y_tensor = torch.from_numpy(ys).unsqueeze(1)
+    def __len__(self):
+        return self.features.shape[0]
 
-dataset = PointsDataset(x_tensor, y_tensor)
+    def __getitem__(self, idx):
+        return self.features[idx], self.targets[idx]
+
+
+dataset = PatientsDataset(bmi, progression)
 loader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)</code></pre>
         </div>
       </details>
 
       <p class="src-note">
         실행 가능한 전체 노트북(출력 포함):
-        <a href="https://github.com/leeyunhome/deep-learning-portfolio/blob/main/notebooks/01_linear_regression_pytorch.ipynb" target="_blank" rel="noopener">01_linear_regression_pytorch.ipynb</a>
+        <a href="https://github.com/leeyunhome/deep-learning-portfolio/blob/main/notebooks/01_linear_regression_pytorch.ipynb?plain=1" target="_blank" rel="noopener">01_linear_regression_pytorch.ipynb</a>
+        (GitHub의 노트북 렌더러가 가끔 오류를 내서 소스 보기로 링크했습니다)
       </p>
     </div>
   </section>
